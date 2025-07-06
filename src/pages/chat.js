@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import api, { getCurrentUser, isAuthenticated } from '../utils/api';
@@ -20,10 +20,6 @@ function CHAT() {
   const socketRef = useRef();
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  // Helper function to create consistent room ID
-  const createRoomId = (jobId, freelancerName) => {
-    return `job_${jobId}_freelancer_${freelancerName}`;
-  };
 
   // Extract job and user info from room ID
   const parseRoomId = (roomId) => {
@@ -157,6 +153,7 @@ function CHAT() {
         clearTimeout(typingTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId, navigate, location]);
   const setupSocketListeners = (currentUser) => {
     // Remove any existing listeners to prevent duplicates

@@ -11,16 +11,6 @@ function JOB_DETAILS() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    console.log('JobDetails useEffect running...');
-
-    // You're already on the page, so authentication is working
-    // Let's just fetch the data without checking auth again
-    fetchJobDetails();
-    fetchRelatedJobs();
-    checkIfFavorite();
-  }, [jobId, navigate, fetchJobDetails, fetchRelatedJobs, checkIfFavorite]);
-
   const fetchJobDetails = useCallback(async () => {
     try {
       const response = await api.get('/api/documents');
@@ -79,6 +69,16 @@ function JOB_DETAILS() {
       console.error('Error checking favorite status:', error);
     }
   }, [jobId]);
+
+  useEffect(() => {
+    console.log('JobDetails useEffect running...');
+
+    // You're already on the page, so authentication is working
+    // Let's just fetch the data without checking auth again
+    fetchJobDetails();
+    fetchRelatedJobs();
+    checkIfFavorite();
+  }, [jobId, navigate, fetchJobDetails, fetchRelatedJobs, checkIfFavorite]);
 
   const toggleFavorite = async () => {
     try {

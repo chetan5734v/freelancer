@@ -29,29 +29,6 @@ function SEARCH() {
     fetchJobs();
   }, []);
 
-  useEffect(() => {
-    filterAndSortJobs();
-    updateURL();
-  }, [filterAndSortJobs, updateURL]);
-
-  const fetchJobs = async () => {
-    try {
-      const response = await api.get('/api/documents');
-      const currentUser = getCurrentUser();
-
-      // Filter out jobs posted by current user if authenticated
-      const availableJobs = currentUser && isAuthenticated()
-        ? response.data.filter(job => job.postedBy !== currentUser.username)
-        : response.data;
-
-      setJobs(availableJobs);
-    } catch (error) {
-      console.error('Error fetching jobs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const filterAndSortJobs = useCallback(() => {
     let filtered = [...jobs];
 
@@ -105,6 +82,29 @@ function SEARCH() {
 
     setSearchParams(params);
   }, [searchQuery, selectedCategory, selectedStatus, sortBy, setSearchParams]);
+
+  useEffect(() => {
+    filterAndSortJobs();
+    updateURL();
+  }, [filterAndSortJobs, updateURL]);
+
+  const fetchJobs = async () => {
+    try {
+      const response = await api.get('/api/documents');
+      const currentUser = getCurrentUser();
+
+      // Filter out jobs posted by current user if authenticated
+      const availableJobs = currentUser && isAuthenticated()
+        ? response.data.filter(job => job.postedBy !== currentUser.username)
+        : response.data;
+
+      setJobs(availableJobs);
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const clearFilters = () => {
     setSearchQuery('');
