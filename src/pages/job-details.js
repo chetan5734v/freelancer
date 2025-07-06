@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { getCurrentUser, isAuthenticated, debugAuth } from '../utils/api';
 
@@ -19,9 +19,9 @@ function JOB_DETAILS() {
     fetchJobDetails();
     fetchRelatedJobs();
     checkIfFavorite();
-  }, [jobId, navigate]);
+  }, [jobId, navigate, fetchJobDetails, fetchRelatedJobs, checkIfFavorite]);
 
-  const fetchJobDetails = async () => {
+  const fetchJobDetails = useCallback(async () => {
     try {
       const response = await api.get('/api/documents');
       const jobs = response.data;
@@ -39,9 +39,9 @@ function JOB_DETAILS() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId, navigate]);
 
-  const fetchRelatedJobs = async () => {
+  const fetchRelatedJobs = useCallback(async () => {
     try {
       const response = await api.get('/api/documents');
       const jobs = response.data;
@@ -57,9 +57,9 @@ function JOB_DETAILS() {
     } catch (error) {
       console.error('Error fetching related jobs:', error);
     }
-  };
+  }, [jobId]);
 
-  const checkIfFavorite = async () => {
+  const checkIfFavorite = useCallback(async () => {
     try {
       if (!isAuthenticated()) {
         return; // Don't check favorites if not authenticated
@@ -78,7 +78,7 @@ function JOB_DETAILS() {
     } catch (error) {
       console.error('Error checking favorite status:', error);
     }
-  };
+  }, [jobId]);
 
   const toggleFavorite = async () => {
     try {

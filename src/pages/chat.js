@@ -157,7 +157,7 @@ function CHAT() {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [postId, navigate]);
+  }, [postId, navigate, location]);
   const setupSocketListeners = (currentUser) => {
     // Remove any existing listeners to prevent duplicates
     socketRef.current.off('newMessage');

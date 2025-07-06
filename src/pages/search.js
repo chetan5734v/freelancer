@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api, { getCurrentUser, isAuthenticated } from '../utils/api';
 
@@ -32,7 +32,7 @@ function SEARCH() {
   useEffect(() => {
     filterAndSortJobs();
     updateURL();
-  }, [jobs, searchQuery, selectedCategory, selectedStatus, sortBy]);
+  }, [filterAndSortJobs, updateURL]);
 
   const fetchJobs = async () => {
     try {
@@ -52,7 +52,7 @@ function SEARCH() {
     }
   };
 
-  const filterAndSortJobs = () => {
+  const filterAndSortJobs = useCallback(() => {
     let filtered = [...jobs];
 
     // Text search
@@ -94,9 +94,9 @@ function SEARCH() {
     });
 
     setFilteredJobs(filtered);
-  };
+  }, [jobs, searchQuery, selectedCategory, selectedStatus, sortBy]);
 
-  const updateURL = () => {
+  const updateURL = useCallback(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     if (selectedCategory) params.set('category', selectedCategory);
@@ -104,7 +104,7 @@ function SEARCH() {
     if (sortBy !== 'newest') params.set('sort', sortBy);
 
     setSearchParams(params);
-  };
+  }, [searchQuery, selectedCategory, selectedStatus, sortBy, setSearchParams]);
 
   const clearFilters = () => {
     setSearchQuery('');

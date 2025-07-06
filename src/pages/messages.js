@@ -94,7 +94,7 @@ function MESSAGES() {
     };
 
     initializeMessages();
-  }, [postId]);  // Show loading state
+  }, [postId, navigate]);  // Show loading state
   if (loading) {
     return (
       <div className="p-8 text-gray-800 bg-white min-h-screen">
