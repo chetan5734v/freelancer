@@ -1,12 +1,7 @@
 const mongoose = require('mongoose');
 const { userSchema } = require('./database/tasks');
-const uri = 'mongodb://127.0.0.1:27017/dbconnct';
+require('./dbconnect'); // Use centralized database connection
 
-mongoose.connect(uri).then(() => {
-  console.log('Database connected');
-}).catch((err) => {
-  console.error('Database connection failed:', err);
-});
 const JobModel = mongoose.model('tasks', userSchema);
 
 async function JOBS(req, res) {

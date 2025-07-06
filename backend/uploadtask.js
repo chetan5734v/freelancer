@@ -1,14 +1,7 @@
 const mongoose = require('mongoose');
 const { userSchema } = require('./database/tasks');
 const { CHECK_TOKEN_BALANCE, DEDUCT_TOKENS } = require('./tokens');
-const uri = 'mongodb://127.0.0.1:27017/dbconnct';
-
-// Connect to MongoDB
-mongoose.connect(uri).then(() => {
-  console.log('Database connected');
-}).catch((err) => {
-  console.error('Database connection failed:', err);
-});
+require('./dbconnect'); // Use centralized database connection
 
 // Define model
 const usermodel = mongoose.model('tasks', userSchema);

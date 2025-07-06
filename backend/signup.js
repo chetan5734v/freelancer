@@ -2,15 +2,9 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { userSchema } = require('./database/user');
+require('./dbconnect'); // Use centralized database connection
 
-const uri = 'mongodb://127.0.0.1:27017/dbconnct';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-mongoose.connect(uri).then(() => {
-    console.log('Database connected');
-}).catch((err) => {
-    console.error('Database connection failed:', err);
-});
 
 const usermodel = mongoose.model("users", userSchema);
 console.log('--- SIGNUP hit ---');
