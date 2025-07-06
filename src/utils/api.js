@@ -3,8 +3,9 @@ import axios from 'axios';
 // Use environment variables for production hosting
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8002';
 
-// For production, you'll set REACT_APP_API_URL to your Railway backend URL
+// For production, you'll set REACT_APP_API_URL to your Render backend URL
 console.log('API Base URL:', API_BASE_URL);
+console.log('Environment check - REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 
 // Create axios instance
 const api = axios.create({
