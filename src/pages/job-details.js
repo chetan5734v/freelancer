@@ -12,12 +12,10 @@ function JOB_DETAILS() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      alert('Please sign in to view job details.');
-      navigate('/signin');
-      return;
-    }
+    console.log('JobDetails useEffect running...');
 
+    // You're already on the page, so authentication is working
+    // Let's just fetch the data without checking auth again
     fetchJobDetails();
     fetchRelatedJobs();
     checkIfFavorite();
@@ -63,7 +61,15 @@ function JOB_DETAILS() {
 
   const checkIfFavorite = async () => {
     try {
+      if (!isAuthenticated()) {
+        return; // Don't check favorites if not authenticated
+      }
+
       const user = getCurrentUser();
+      if (!user || !user.username) {
+        return;
+      }
+
       const response = await api.post('/favorites', {
         username: user.username
       });
@@ -76,7 +82,18 @@ function JOB_DETAILS() {
 
   const toggleFavorite = async () => {
     try {
+      if (!isAuthenticated()) {
+        alert('Please sign in to manage favorites.');
+        navigate('/signin');
+        return;
+      }
+
       const user = getCurrentUser();
+      if (!user || !user.username) {
+        alert('Please sign in to manage favorites.');
+        navigate('/signin');
+        return;
+      }
 
       if (isFavorite) {
         await api.post('/favorites/remove', {
@@ -98,11 +115,31 @@ function JOB_DETAILS() {
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
+
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        alert('Please sign in to manage favorites.');
+        navigate('/signin');
+      } else {
+        alert('Failed to update favorite status. Please try again.');
+      }
     }
   };
 
   const updateJobStatus = async (newStatus) => {
-    if (!job || !user || job.postedBy !== user.username) {
+    if (!job) {
+      return;
+    }
+
+    // Check authentication and get current user
+    if (!isAuthenticated()) {
+      alert('Please sign in to update job status.');
+      navigate('/signin');
+      return;
+    }
+
+    const user = getCurrentUser();
+    if (!user || !user.username || job.postedBy !== user.username) {
+      alert('You can only update your own job status.');
       return;
     }
 
@@ -120,37 +157,103 @@ function JOB_DETAILS() {
       }
     } catch (error) {
       console.error('Error updating job status:', error);
-      alert('Failed to update job status. Please try again.');
+
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        alert('Please sign in to update job status.');
+        navigate('/signin');
+      } else {
+        alert('Failed to update job status. Please try again.');
+      }
     } finally {
       setUpdatingStatus(false);
     }
   };
-
   const handleApply = async () => {
-    const user = getCurrentUser();
-    const roomId = `job_${jobId}_freelancer_${user.id}`;
+    console.log('handleApply called');
 
-    // Create notification for job owner
-    try {
-      await api.post('/notifications/create', {
-        username: job.postedBy,
-        title: 'New Job Application',
-        message: `${user.username} is interested in your job "${job.title}"`,
-        type: 'job_application',
-        jobId: jobId,
-        roomId: roomId
-      });
-    } catch (error) {
-      console.error('Error creating application notification:', error);
+    // Get authentication data directly
+    const token = sessionStorage.getItem('token');
+    const userData = sessionStorage.getItem('user');
+
+    console.log('Raw token:', token ? 'Present' : 'Missing');
+    console.log('Raw user data:', userData ? 'Present' : 'Missing');
+
+    // More detailed check
+    if (!token || !userData) {
+      console.log('Missing token or user data - clearing storage and redirecting');
+      // Clear potentially corrupted data
+      sessionStorage.clear();
+      alert('Your session has expired. Please sign in again.');
+      navigate('/signin');
+      return;
     }
 
-    navigate(`/chat/${roomId}`, {
-      state: {
-        jobData: job,
-        isFreelancer: true,
-        roomId
+    let user;
+    try {
+      user = JSON.parse(userData);
+    } catch (e) {
+      console.log('Error parsing user data - clearing storage:', e);
+      sessionStorage.clear();
+      alert('Your session data is corrupted. Please sign in again.');
+      navigate('/signin');
+      return;
+    }
+
+    console.log('Parsed user:', user);
+
+    // Check if user has required fields
+    if (!user || !user.username) {
+      console.log('User missing username - clearing storage');
+      sessionStorage.clear();
+      alert('Invalid user data. Please sign in again.');
+      navigate('/signin');
+      return;
+    }
+
+    console.log('User authenticated, proceeding with application...');
+    try {
+      // Apply for job using the new token-based system
+      const response = await api.post('/jobs/apply', {
+        username: user.username,
+        jobId: jobId,
+        jobTitle: job.title,
+        jobOwner: job.postedBy
+      });
+
+      alert(response.data.message);
+
+      // Navigate to chat after successful application
+      const roomId = response.data.roomId;
+      navigate(`/chat/${roomId}`, {
+        state: {
+          jobData: job,
+          isFreelancer: true,
+          roomId
+        }
+      });
+
+    } catch (error) {
+      console.error('Error applying for job:', error);
+
+      if (error.response?.status === 402) {
+        // Insufficient tokens
+        const shouldBuyTokens = window.confirm(
+          `${error.response.data.message}\n\nWould you like to purchase tokens now?`
+        );
+
+        if (shouldBuyTokens) {
+          navigate('/tokens');
+        }
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        // Authentication error - clear storage and redirect
+        console.log('Authentication failed - clearing storage and redirecting');
+        sessionStorage.clear();
+        alert('Your session has expired. Please sign in again.');
+        navigate('/signin');
+      } else {
+        alert('Failed to apply for job. Please try again.');
       }
-    });
+    }
   };
 
   if (loading) {
@@ -336,8 +439,8 @@ function JOB_DETAILS() {
                         onClick={() => updateJobStatus(status)}
                         disabled={updatingStatus || job.status === status}
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ${job.status === status
-                            ? 'bg-blue-600 text-white cursor-default'
-                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+                          ? 'bg-blue-600 text-white cursor-default'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
                           }`}
                       >
                         {status === 'Open' && <span className="mr-2" role="img" aria-label="Open">🟢</span>}

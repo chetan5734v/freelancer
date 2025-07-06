@@ -21,8 +21,8 @@ function CHAT() {
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   // Helper function to create consistent room ID
-  const createRoomId = (jobId, freelancerId) => {
-    return `job_${jobId}_freelancer_${freelancerId}`;
+  const createRoomId = (jobId, freelancerName) => {
+    return `job_${jobId}_freelancer_${freelancerName}`;
   };
 
   // Extract job and user info from room ID
@@ -31,7 +31,7 @@ function CHAT() {
     if (parts.length >= 3 && parts[0] === 'job' && parts[2] === 'freelancer') {
       return {
         jobId: parts[1],
-        freelancerId: parts[3]
+        freelancerName: parts[3]
       };
     }
     return null;
@@ -59,14 +59,35 @@ function CHAT() {
         const job = jobs.find(j => j._id === roomInfo.jobId); if (job) {
           setJobInfo(job);
 
-          // Determine chat partner
+          // Determine chat partner and check eligibility
           const isJobOwner = currentUser.username === job.postedBy;
           if (isJobOwner) {
             // Job owner chatting with freelancer
-            setChatPartner(`Freelancer (${roomInfo.freelancerId})`);
+            setChatPartner(`Freelancer (${roomInfo.freelancerName})`);
           } else {
-            // Freelancer chatting with job owner
+            // Freelancer chatting with job owner - check eligibility
             setChatPartner(job.postedBy);
+
+            // Check if freelancer is eligible to message
+            try {
+              const eligibilityResponse = await api.post('/messages/check-eligibility', {
+                username: currentUser.username,
+                jobId: roomInfo.jobId
+              });
+
+              if (!eligibilityResponse.data.eligible) {
+                alert('You must apply for this job first before messaging the job owner.');
+                navigate(`/job/${roomInfo.jobId}`);
+                return;
+              }
+            } catch (error) {
+              if (error.response && error.response.status === 403) {
+                alert('You must apply for this job first before messaging the job owner.');
+                navigate(`/job/${roomInfo.jobId}`);
+                return;
+              }
+              console.error('Error checking messaging eligibility:', error);
+            }
           }
         }
 

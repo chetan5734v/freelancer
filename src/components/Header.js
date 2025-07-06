@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../utils/api';
 import { useNotifications } from '../context/NotificationContext';
+import api from '../utils/api';
 
 function Header() {
   const [user, setUser] = useState(null);
+  const [userTokens, setUserTokens] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,8 +15,21 @@ function Header() {
   useEffect(() => {
     if (isAuthenticated()) {
       setUser(getCurrentUser());
+      fetchUserTokens();
     }
   }, [location]);
+
+  const fetchUserTokens = async () => {
+    try {
+      const currentUser = getCurrentUser();
+      const response = await api.post('/tokens/balance', {
+        username: currentUser.username
+      });
+      setUserTokens(response.data.tokens);
+    } catch (error) {
+      console.error('Error fetching user tokens:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -79,7 +94,18 @@ function Header() {
                 >
                   <span className="text-lg" role="img" aria-label="Favorites">⭐</span>
                   <span className="font-medium">Favorites</span>
-                </Link>                <Link
+                </Link>
+
+                {/* Token Display */}
+                <Link
+                  to="/tokens"
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${isLightBackground ? 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100' : 'border-white/30 bg-white/10 text-white hover:bg-white/20'} transition-colors`}
+                >
+                  <span className="text-lg" role="img" aria-label="Tokens">🪙</span>
+                  <span className="font-medium">{userTokens}</span>
+                </Link>
+
+                <Link
                   to="/notifications"
                   className={`relative flex items-center gap-2 ${isLightBackground ? 'text-gray-700 hover:text-blue-600' : 'text-white hover:text-blue-300'} transition-colors ${isActive('/notifications') ? (isLightBackground ? 'text-blue-600 font-semibold' : 'text-blue-400 font-semibold') : ''
                     }`}

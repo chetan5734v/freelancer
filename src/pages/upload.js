@@ -42,7 +42,7 @@ function UploadTask() {
       const response = await api.post('/task', form);
 
       if (response.status === 200) {
-        setMessage('Task uploaded successfully!');
+        setMessage('Task uploaded successfully! 1 token deducted.');
         setForm({
           title: '',
           category: '',
@@ -51,10 +51,27 @@ function UploadTask() {
           deadline: '',
           createdAt: new Date().toISOString().slice(0, 16),
         });
+
+        // Navigate to homepage after successful upload
+        setTimeout(() => {
+          navigate('/homepage');
+        }, 2000);
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setMessage(error.response?.data?.message || 'Failed to upload task');
+
+      if (error.response?.status === 402) {
+        // Insufficient tokens
+        const shouldBuyTokens = window.confirm(
+          `${error.response.data.message}\n\nWould you like to purchase tokens now?`
+        );
+
+        if (shouldBuyTokens) {
+          navigate('/tokens');
+        }
+      } else {
+        setMessage(error.response?.data?.message || 'Failed to upload task');
+      }
     }
   };
 
@@ -169,8 +186,8 @@ function UploadTask() {
             {/* Success/Error Messages */}
             {message && (
               <div className={`mt-4 p-4 rounded-lg ${message.includes('successfully') || message.includes('Success')
-                  ? 'bg-green-50 border border-green-200 text-green-800'
-                  : 'bg-red-50 border border-red-200 text-red-800'
+                ? 'bg-green-50 border border-green-200 text-green-800'
+                : 'bg-red-50 border border-red-200 text-red-800'
                 }`}>
                 {message}
               </div>

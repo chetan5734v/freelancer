@@ -1,8 +1,9 @@
 // backend/messages.js
 
 const mongoose = require('mongoose');
+const { UserModel } = require('./database/user');
 
-const userSchema = new mongoose.Schema({
+const messageSchema = new mongoose.Schema({
   formData: {
     type: String, // optional: split into sender/receiver
     required: true,
@@ -17,7 +18,37 @@ const userSchema = new mongoose.Schema({
 });
 
 // Create model
-const UserModel = mongoose.model('messages', userSchema);
+const MessageModel = mongoose.model('messages', messageSchema);
+
+// Check if user can message (must have applied for the job first)
+async function CHECK_MESSAGING_ELIGIBILITY(username, jobId) {
+  try {
+    const user = await UserModel.findOne({ username });
+
+    if (!user) {
+      return { eligible: false, reason: 'User not found' };
+    }
+
+    // Check if user has a token transaction for this job (indicating they applied)
+    const hasApplied = user.tokenHistory.some(transaction =>
+      transaction.type === 'deduct' &&
+      transaction.purpose.includes('Applied for job') &&
+      (transaction.purpose.includes(jobId) || transaction.purpose.includes(`job: ${jobId}`))
+    );
+
+    if (!hasApplied) {
+      return {
+        eligible: false,
+        reason: 'You must apply for this job first before messaging the job owner.'
+      };
+    }
+
+    return { eligible: true, reason: 'User is eligible to message' };
+  } catch (error) {
+    console.error('Error checking messaging eligibility:', error);
+    return { eligible: false, reason: 'Error checking eligibility' };
+  }
+}
 
 // Create or update a message thread
 async function MESSAGES(req, res) {
@@ -28,7 +59,43 @@ async function MESSAGES(req, res) {
       return res.status(400).send('formData and newMessage are required');
     }
 
-    const existingThread = await UserModel.findOne({ formData });
+    // Parse room ID to extract job and freelancer info
+    const roomParts = formData.split('_');
+    if (roomParts.length >= 4 && roomParts[0] === 'job' && roomParts[2] === 'freelancer') {
+      const jobId = roomParts[1];
+      const freelancerName = roomParts[3];
+
+      // Get job info to determine if sender is job owner or freelancer
+      const { JOBS } = require('./jobs');
+      const mockJobReq = { query: {} };
+      const jobData = await new Promise((resolve, reject) => {
+        const mockJobRes = {
+          json: (data) => resolve(data),
+          status: () => ({ json: (error) => reject(error) })
+        };
+        JOBS(mockJobReq, mockJobRes);
+      });
+
+      const job = jobData.find(j => j._id.toString() === jobId);
+
+      if (job) {
+        const isJobOwner = newMessage.sender === job.postedBy;
+
+        // Only check eligibility for freelancers, not job owners
+        if (!isJobOwner) {
+          const eligibility = await CHECK_MESSAGING_ELIGIBILITY(newMessage.sender, jobId);
+
+          if (!eligibility.eligible) {
+            return res.status(403).json({
+              message: eligibility.reason,
+              action: 'apply_first'
+            });
+          }
+        }
+      }
+    }
+
+    const existingThread = await MessageModel.findOne({ formData });
 
     if (existingThread) {
       existingThread.messages.push(newMessage);
@@ -36,7 +103,7 @@ async function MESSAGES(req, res) {
       console.log(`Added message to existing thread: ${formData}`);
       return res.send(formData);
     } else {
-      await UserModel.create({
+      await MessageModel.create({
         formData,
         messages: [newMessage],
       });
@@ -58,12 +125,46 @@ async function MESSAGES1(req, res) {
       return res.status(400).send('formData is required');
     }
 
-    let thread = await UserModel.findOne({ formData });
+    let thread = await MessageModel.findOne({ formData });
 
     if (newMessage && newMessage.text && newMessage.text.trim()) {
-      // Adding a new message
+      // Adding a new message - check eligibility for freelancers
+      const roomParts = formData.split('_');
+      if (roomParts.length >= 4 && roomParts[0] === 'job' && roomParts[2] === 'freelancer') {
+        const jobId = roomParts[1];
+
+        // Get job info to determine if sender is job owner or freelancer
+        const { JOBS } = require('./jobs');
+        const mockJobReq = { query: {} };
+        const jobData = await new Promise((resolve, reject) => {
+          const mockJobRes = {
+            json: (data) => resolve(data),
+            status: () => ({ json: (error) => reject(error) })
+          };
+          JOBS(mockJobReq, mockJobRes);
+        });
+
+        const job = jobData.find(j => j._id.toString() === jobId);
+
+        if (job) {
+          const isJobOwner = newMessage.sender === job.postedBy;
+
+          // Only check eligibility for freelancers, not job owners
+          if (!isJobOwner) {
+            const eligibility = await CHECK_MESSAGING_ELIGIBILITY(newMessage.sender, jobId);
+
+            if (!eligibility.eligible) {
+              return res.status(403).json({
+                message: eligibility.reason,
+                action: 'apply_first'
+              });
+            }
+          }
+        }
+      }
+
       if (!thread) {
-        thread = new UserModel({ formData, messages: [] });
+        thread = new MessageModel({ formData, messages: [] });
       }
 
       thread.messages.push(newMessage);
@@ -93,7 +194,7 @@ async function GETALLPOST(req, res) {
       return res.status(400).send('postId is required');
     }    // Find all threads for this job using the new room ID format
     // Format: job_${jobId}_freelancer_${freelancerId}
-    const threads = await UserModel.find({
+    const threads = await MessageModel.find({
       formData: { $regex: `^job_${postId}_freelancer_` }
     });
 
@@ -112,4 +213,5 @@ module.exports = {
   MESSAGES,
   MESSAGES1,
   GETALLPOST,
+  CHECK_MESSAGING_ELIGIBILITY,
 };

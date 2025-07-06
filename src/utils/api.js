@@ -1,10 +1,12 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8002';
+// Use environment variables for production hosting
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8002';
 
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000, // 10 second timeout
 });
 
 // Add request interceptor to include JWT token
@@ -32,9 +34,15 @@ api.interceptors.response.use(
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('username');
 
-      // Redirect to signin page
+      // Use relative path for hosting
       window.location.href = '/signin';
     }
+
+    // Handle network errors gracefully
+    if (!error.response) {
+      console.error('Network error:', error.message);
+    }
+
     return Promise.reject(error);
   }
 );

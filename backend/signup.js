@@ -40,12 +40,20 @@ async function SIGNUP(req, res) {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Create new user
+        // Create new user with 5 free tokens
         const newUser = await usermodel.create({
             firstName,
             lastName,
             username,
-            password: hashedPassword
+            password: hashedPassword,
+            tokens: 5,
+            tokenHistory: [{
+                type: 'add',
+                amount: 5,
+                purpose: 'Welcome bonus - New user signup',
+                date: new Date(),
+                balance: 5
+            }]
         });
 
         // Generate JWT token
@@ -59,13 +67,14 @@ async function SIGNUP(req, res) {
         );
 
         return res.status(201).json({
-            message: "User created successfully",
+            message: "User created successfully! You received 5 free tokens to get started.",
             token,
             user: {
                 id: newUser._id,
                 username: newUser.username,
                 firstName: newUser.firstName,
-                lastName: newUser.lastName
+                lastName: newUser.lastName,
+                tokens: newUser.tokens
             }
         });
     } catch (err) {

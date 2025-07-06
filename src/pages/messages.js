@@ -8,11 +8,13 @@ function MESSAGES() {
   const [messageThreads, setMessageThreads] = useState([]);
   const [jobData, setJobData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [canMessage, setCanMessage] = useState(false);
+  const [messagingError, setMessagingError] = useState('');
   const navigate = useNavigate();
   // Helper function to create consistent room ID
   // Each conversation should have a unique ID based on job + specific freelancer
-  const createRoomId = (jobId, freelancerId) => {
-    return `job_${jobId}_freelancer_${freelancerId}`;
+  const createRoomId = (jobId, freelancerName) => {
+    return `job_${jobId}_freelancer_${freelancerName}`;
   };
   useEffect(() => {
     const initializeMessages = async () => {
@@ -48,14 +50,40 @@ function MESSAGES() {
 
           console.log('Message threads for job owner:', threadsResponse.data);
           setMessageThreads(threadsResponse.data);
+          setCanMessage(true); // Job owners can always message
         } else {
-          // Freelancer: Create room ID for this specific freelancer
-          const roomId = createRoomId(postId, currentUser.id);          // Try to fetch existing conversation
-          const existingConvo = await api.post('/messages1', {
-            formData: roomId
-          });
+          // Freelancer: Check if they can message (must have applied first)
+          try {
+            const eligibilityResponse = await api.post('/messages/check-eligibility', {
+              username: currentUser.username,
+              jobId: postId
+            });
 
-          console.log('Existing conversation check:', existingConvo.data);
+            if (eligibilityResponse.data.eligible) {
+              setCanMessage(true);
+
+              // Create room ID for this specific freelancer
+              const roomId = createRoomId(postId, currentUser.username);
+
+              // Try to fetch existing conversation
+              const existingConvo = await api.post('/messages1', {
+                formData: roomId
+              });
+
+              console.log('Existing conversation check:', existingConvo.data);
+            } else {
+              setCanMessage(false);
+              setMessagingError('You must apply for this job before messaging the job owner.');
+            }
+          } catch (error) {
+            if (error.response && error.response.status === 403) {
+              setCanMessage(false);
+              setMessagingError(error.response.data.message || 'You must apply for this job before messaging the job owner.');
+            } else {
+              console.error('Error checking messaging eligibility:', error);
+              setMessagingError('Error checking messaging eligibility. Please try again.');
+            }
+          }
         }
 
       } catch (error) {
@@ -149,13 +177,14 @@ function MESSAGES() {
     </div>
     );
   }
-  // ✅ FREELANCER VIEW: Start conversation with job owner
+  // ✅ FREELANCER VIEW: Start conversation with job owner or show eligibility message
   return (
     <div className="p-8 text-gray-800 bg-white min-h-screen">
-      <div className="max-w-2xl mx-auto text-center">        <h3 className="text-3xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center">
-        <span className="text-3xl" role="img" aria-label="Job">💼</span>
-        Interested in this job?
-      </h3>
+      <div className="max-w-2xl mx-auto text-center">
+        <h3 className="text-3xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center">
+          <span className="text-3xl" role="img" aria-label="Job">💼</span>
+          {canMessage ? 'Interested in this job?' : 'Apply to Message'}
+        </h3>
 
         <div className="bg-white rounded-lg p-8 border border-gray-200 shadow-sm mb-6">
           <h4 className="text-xl font-semibold mb-4 text-blue-600">Job Details</h4>
@@ -163,25 +192,65 @@ function MESSAGES() {
           <p className="text-gray-700 mb-2"><span className="font-medium">Category:</span> {jobData.category}</p>
           <p className="text-gray-700 mb-2"><span className="font-medium">Posted by:</span> {jobData.postedBy}</p>
           <p className="text-gray-700"><span className="font-medium">Status:</span> {jobData.status}</p>
-        </div>        <button
-          onClick={() => {
-            const roomId = createRoomId(postId, user.id);
-            navigate(`/chat/${roomId}`, {
-              state: {
-                jobData,
-                isFreelancer: true,
-                roomId
-              }
-            });
-          }} className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors transform hover:scale-105 shadow-lg flex items-center gap-3 justify-center"
-        >
-          <span className="text-lg" role="img" aria-label="Chat">💬</span>
-          Start Conversation with {jobData.postedBy}
-        </button>
+        </div>
 
-        <p className="text-gray-500 mt-4 text-sm">
-          Click to start discussing this opportunity
-        </p>
+        {canMessage ? (
+          <div>
+            <button
+              onClick={() => {
+                const roomId = createRoomId(postId, user.username);
+                navigate(`/chat/${roomId}`, {
+                  state: {
+                    jobData,
+                    isFreelancer: true,
+                    roomId
+                  }
+                });
+              }}
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors transform hover:scale-105 shadow-lg flex items-center gap-3 justify-center"
+            >
+              <span className="text-lg" role="img" aria-label="Chat">💬</span>
+              Start Conversation with {jobData.postedBy}
+            </button>
+
+            <p className="text-gray-500 mt-4 text-sm">
+              Click to start discussing this opportunity
+            </p>
+          </div>
+        ) : (
+          <div className="text-center">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+              <div className="text-4xl mb-3" role="img" aria-label="Lock">🔒</div>
+              <h4 className="text-lg font-semibold text-yellow-800 mb-2">
+                Apply First to Message
+              </h4>
+              <p className="text-yellow-700 mb-4">
+                {messagingError || 'You must apply for this job before you can message the job owner.'}
+              </p>
+              <p className="text-sm text-yellow-600">
+                Applying requires 1 token and allows you to communicate with the job owner.
+              </p>
+            </div>
+
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => navigate(`/job/${postId}`)}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <span className="text-lg" role="img" aria-label="Apply">📝</span>
+                Apply for Job (1 Token)
+              </button>
+
+              <button
+                onClick={() => navigate('/tokens')}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <span className="text-lg" role="img" aria-label="Tokens">🪙</span>
+                Get Tokens
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

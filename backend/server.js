@@ -10,7 +10,7 @@ const { SIGNUP } = require('./signup');
 const { SIGNIN } = require('./signin');
 const { UPLOADTASK } = require('./uploadtask');
 const { JOBS, JOBS1, UPDATE_JOB_STATUS } = require('./jobs');
-const { MESSAGES, MESSAGES1, GETALLPOST } = require('./messages');
+const { MESSAGES, MESSAGES1, GETALLPOST, CHECK_MESSAGING_ELIGIBILITY } = require('./messages');
 const {
   GET_NOTIFICATIONS,
   MARK_NOTIFICATION_READ,
@@ -22,15 +22,27 @@ const {
   CREATE_NOTIFICATION_API
 } = require('./features');
 
+// Token system imports
+const {
+  GET_USER_TOKENS,
+  GET_TOKEN_HISTORY,
+  PURCHASE_TOKENS
+} = require('./tokens');
+
+// Job application imports
+const {
+  APPLY_FOR_JOB
+} = require('./jobApplications');
+
 // App setup
 const app = express();
-const port = 8002;
+const port = process.env.PORT || 8002;
 const server = http.createServer(app);
 
 // Initialize Socket.IO server with CORS
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || ["http://localhost:3000", "https://your-frontend-domain.com"],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -38,7 +50,7 @@ const io = new Server(server, {
 
 // Middleware
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: process.env.FRONTEND_URL || ["http://localhost:3000", "https://your-frontend-domain.com"],
   credentials: true
 }));
 app.use(express.json());
@@ -253,6 +265,34 @@ app.post('/notifications/clear-all', authenticateToken, CLEAR_ALL_NOTIFICATIONS)
 app.post('/favorites', authenticateToken, GET_FAVORITES);
 app.post('/favorites/add', authenticateToken, ADD_FAVORITE);
 app.post('/favorites/remove', authenticateToken, REMOVE_FAVORITE);
+
+// Token system routes
+app.post('/tokens/balance', authenticateToken, GET_USER_TOKENS);
+app.post('/tokens/history', authenticateToken, GET_TOKEN_HISTORY);
+app.post('/tokens/purchase', authenticateToken, PURCHASE_TOKENS);
+
+// Job application routes
+app.post('/jobs/apply', authenticateToken, APPLY_FOR_JOB);
+app.post('/messages/check-eligibility', authenticateToken, async (req, res) => {
+  try {
+    const { username, jobId } = req.body;
+
+    if (!username || !jobId) {
+      return res.status(400).json({ message: 'Username and jobId are required' });
+    }
+
+    const result = await CHECK_MESSAGING_ELIGIBILITY(username, jobId);
+
+    if (result.eligible) {
+      res.json({ eligible: true, message: result.reason });
+    } else {
+      res.status(403).json({ eligible: false, message: result.reason });
+    }
+  } catch (error) {
+    console.error('Error checking messaging eligibility:', error);
+    res.status(500).json({ message: 'Error checking messaging eligibility' });
+  }
+});
 
 // Public routes (optional authentication)
 app.get('/api/documents', optionalAuth, JOBS);

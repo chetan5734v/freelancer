@@ -29,9 +29,15 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated()) return;
 
+    // Use environment variable for socket URL
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:8002';
+
     // Initialize socket connection for real-time notifications
-    const socketConnection = io('http://localhost:8002', {
-      transports: ['websocket', 'polling']
+    const socketConnection = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     setSocket(socketConnection);    // Listen for real-time notifications

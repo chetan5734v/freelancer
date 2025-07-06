@@ -19,6 +19,7 @@ import NOTIFICATIONS from './pages/notifications';
 import FAVORITES from './pages/favorites';
 import JOB_DETAILS from './pages/job-details';
 import SEARCH from './pages/search';
+import TOKENS from './pages/tokens';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
         <Route path="/profile" element={<Layout background="white"><PROFILE /></Layout>} />
         <Route path="/notifications" element={<Layout background="white"><NOTIFICATIONS /></Layout>} />
         <Route path="/favorites" element={<Layout background="white"><FAVORITES /></Layout>} />
+        <Route path="/tokens" element={<Layout background="white"><TOKENS /></Layout>} />
         <Route path="/search" element={<Layout background="white"><SEARCH /></Layout>} />
         <Route path="/job/:jobId" element={<Layout background="white"><JOB_DETAILS /></Layout>} />
         <Route path="/messages/:postId" element={<Layout><MESSAGES /></Layout>} />

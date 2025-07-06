@@ -75,6 +75,15 @@ function HomePage() {
         </li>
         <li>
           <Link
+            to="/tokens"
+            className="block px-6 py-4 bg-white rounded-lg text-center text-lg font-semibold border border-gray-200 hover:border-yellow-500 hover:shadow-lg transition-all duration-300 text-gray-900 hover:text-yellow-600 flex items-center justify-center gap-2"
+          >
+            <span className="text-lg" role="img" aria-label="Tokens">🪙</span>
+            <span>My Tokens</span>
+          </Link>
+        </li>
+        <li>
+          <Link
             to="/notifications"
             className="block px-6 py-4 bg-white rounded-lg text-center text-lg font-semibold border border-gray-200 hover:border-red-500 hover:shadow-lg transition-all duration-300 text-gray-900 hover:text-red-600 flex items-center justify-center gap-2"
           >
