@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api, { getCurrentUser, isAuthenticated } from '../utils/api';
+import api, { getCurrentUser, isAuthenticated, debugAuth } from '../utils/api';
 
 function JOB_DETAILS() {
   const { jobId } = useParams();
@@ -170,6 +170,9 @@ function JOB_DETAILS() {
   };
   const handleApply = async () => {
     console.log('handleApply called');
+    
+    // Debug authentication state
+    debugAuth();
 
     // Get authentication data directly
     const token = sessionStorage.getItem('token');
@@ -211,19 +214,33 @@ function JOB_DETAILS() {
     }
 
     console.log('User authenticated, proceeding with application...');
+    console.log('Making API call to /jobs/apply with data:', {
+      jobId: jobId,
+      jobTitle: job.title,
+      jobOwner: job.postedBy
+    });
+
     try {
       // Apply for job using the new token-based system
+      // Username will be extracted from JWT token on backend
       const response = await api.post('/jobs/apply', {
-        username: user.username,
         jobId: jobId,
         jobTitle: job.title,
         jobOwner: job.postedBy
       });
 
+      console.log('Job application successful:', response.data);
       alert(response.data.message);
 
       // Navigate to chat after successful application
       const roomId = response.data.roomId;
+      console.log('Navigating to chat with roomId:', roomId);
+      console.log('Navigation state:', {
+        jobData: job,
+        isFreelancer: true,
+        roomId
+      });
+
       navigate(`/chat/${roomId}`, {
         state: {
           jobData: job,
@@ -234,6 +251,9 @@ function JOB_DETAILS() {
 
     } catch (error) {
       console.error('Error applying for job:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
 
       if (error.response?.status === 402) {
         // Insufficient tokens
@@ -251,7 +271,10 @@ function JOB_DETAILS() {
         alert('Your session has expired. Please sign in again.');
         navigate('/signin');
       } else {
-        alert('Failed to apply for job. Please try again.');
+        // For debugging - show the actual error
+        const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
+        console.error('Unexpected error:', errorMessage);
+        alert(`Failed to apply for job: ${errorMessage}. Please try again.`);
       }
     }
   };
@@ -394,7 +417,8 @@ function JOB_DETAILS() {
 
             {/* Action Buttons */}
             {!isOwner && job.status === 'Open' && (
-              <div className="flex gap-4">                <button
+              <div className="flex gap-4">
+                <button
                 onClick={handleApply}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
               >

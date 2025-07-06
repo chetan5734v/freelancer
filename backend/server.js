@@ -250,6 +250,15 @@ app.get('/', (req, res) => {
 app.post('/signup', SIGNUP);
 app.post('/signin', SIGNIN);
 
+// Test authentication endpoint
+app.get('/test-auth', authenticateToken, (req, res) => {
+  res.json({
+    message: 'Authentication successful',
+    user: req.user,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Protected routes (require authentication)
 app.post('/task', authenticateToken, (req, res) => UPLOADTASK(req, res, io));
 app.post('/jobs/update-status', authenticateToken, UPDATE_JOB_STATUS);

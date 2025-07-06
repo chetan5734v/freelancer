@@ -4,11 +4,25 @@ const { CREATE_NOTIFICATION } = require('./features');
 // Apply for a job (requires 1 token)
 async function APPLY_FOR_JOB(req, res) {
   try {
-    const { username, jobId, jobTitle, jobOwner } = req.body;
+    console.log('APPLY_FOR_JOB called');
+    console.log('Request body:', req.body);
+    console.log('Authenticated user:', req.user);
+    
+    // Get username from authenticated user (more secure)
+    const username = req.user?.username;
+    const { jobId, jobTitle, jobOwner } = req.body;
 
-    if (!username || !jobId || !jobTitle || !jobOwner) {
+    if (!username) {
+      console.log('No username found in authenticated user');
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    if (!jobId || !jobTitle || !jobOwner) {
+      console.log('Missing required fields:', { jobId, jobTitle, jobOwner });
       return res.status(400).json({ message: 'Missing required fields' });
     }
+
+    console.log('Processing job application for:', { username, jobId, jobTitle, jobOwner });
 
     // Check if user has enough tokens (1 token required for job application)
     const hasEnoughTokens = await CHECK_TOKEN_BALANCE(username, 1);
@@ -22,7 +36,7 @@ async function APPLY_FOR_JOB(req, res) {
     }
 
     // Deduct 1 token for job application
-    const newBalance = await DEDUCT_TOKENS(username, 1, `Applied for job: ${jobTitle}`);
+    const newBalance = await DEDUCT_TOKENS(username, 1, `Applied for job: ${jobTitle} (ID: ${jobId})`);
 
     // Create notification for job owner
     await CREATE_NOTIFICATION(

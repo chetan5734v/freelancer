@@ -23,20 +23,47 @@ const MessageModel = mongoose.model('messages', messageSchema);
 // Check if user can message (must have applied for the job first)
 async function CHECK_MESSAGING_ELIGIBILITY(username, jobId) {
   try {
+    console.log('=== MESSAGING ELIGIBILITY CHECK ===');
+    console.log('Username:', username);
+    console.log('Job ID:', jobId);
+
     const user = await UserModel.findOne({ username });
 
     if (!user) {
+      console.log('User not found');
       return { eligible: false, reason: 'User not found' };
     }
 
-    // Check if user has a token transaction for this job (indicating they applied)
-    const hasApplied = user.tokenHistory.some(transaction =>
+    // Get all job application transactions
+    const jobApplications = user.tokenHistory.filter(transaction =>
       transaction.type === 'deduct' &&
-      transaction.purpose.includes('Applied for job') &&
-      (transaction.purpose.includes(jobId) || transaction.purpose.includes(`job: ${jobId}`))
+      transaction.purpose.includes('Applied for job')
     );
 
-    if (!hasApplied) {
+    console.log('All job applications by user:', jobApplications);
+
+    // Check if user applied for this specific job
+    const hasAppliedForThisJob = jobApplications.some(transaction =>
+      transaction.purpose.includes(jobId) || transaction.purpose.includes(`ID: ${jobId}`)
+    );
+
+    // For immediate access after application - check for very recent applications (extended to 10 minutes)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const hasVeryRecentApplication = jobApplications.some(transaction => {
+      const transactionDate = transaction.timestamp || transaction.date;
+      return transactionDate && new Date(transactionDate) > tenMinutesAgo;
+    });
+
+    console.log('Applied for this job specifically:', hasAppliedForThisJob);
+    console.log('Has very recent application (10min):', hasVeryRecentApplication);
+
+    // User is eligible if they applied for this specific job OR have a very recent application
+    const isEligible = hasAppliedForThisJob || hasVeryRecentApplication;
+
+    console.log('Final eligibility result:', isEligible);
+    console.log('=== END ELIGIBILITY CHECK ===');
+
+    if (!isEligible) {
       return {
         eligible: false,
         reason: 'You must apply for this job first before messaging the job owner.'

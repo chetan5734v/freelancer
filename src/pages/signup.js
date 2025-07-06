@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../utils/api';
 
 function SIGNUP() {
     const navigate = useNavigate();
@@ -23,7 +23,7 @@ function SIGNUP() {
         e.preventDefault();
 
         try {
-            const response = await axios.post('http://localhost:8002/signup', formData);
+            const response = await api.post('/signup', formData);
 
             if (response.status === 201) {
                 // Store both user data and JWT token in sessionStorage (tab-specific)

@@ -38,7 +38,12 @@ function CHAT() {
   };
   useEffect(() => {
     const initializeChat = async () => {
+      console.log('=== CHAT INITIALIZATION ===');
+      console.log('PostId (roomId):', postId);
+      console.log('Location state:', location.state);
+
       if (!isAuthenticated()) {
+        console.log('User not authenticated, redirecting to signin');
         alert('Please sign in to access chat.');
         navigate('/signin');
         return;
@@ -46,49 +51,76 @@ function CHAT() {
 
       try {
         const currentUser = getCurrentUser();
-        setUser(currentUser);        // Parse room information
+        console.log('Current user:', currentUser);
+        setUser(currentUser);
+
+        // Parse room information
         const roomInfo = parseRoomId(postId);
+        console.log('Parsed room info:', roomInfo);
+        
         if (!roomInfo) {
           console.error('Invalid room ID format:', postId);
+          alert('Invalid chat room format. Please try again.');
+          navigate('/world');
           return;
         }
 
         // Fetch job information
+        console.log('Fetching job information for jobId:', roomInfo.jobId);
         const jobsResponse = await api.get(`/api/documents`);
         const jobs = jobsResponse.data;
-        const job = jobs.find(j => j._id === roomInfo.jobId); if (job) {
+        const job = jobs.find(j => j._id === roomInfo.jobId);
+        
+        console.log('Found job:', job);
+
+        if (job) {
           setJobInfo(job);
 
           // Determine chat partner and check eligibility
           const isJobOwner = currentUser.username === job.postedBy;
+          console.log('Is job owner:', isJobOwner);
+          
           if (isJobOwner) {
             // Job owner chatting with freelancer
             setChatPartner(`Freelancer (${roomInfo.freelancerName})`);
+            console.log('Chat partner set as freelancer:', roomInfo.freelancerName);
           } else {
             // Freelancer chatting with job owner - check eligibility
             setChatPartner(job.postedBy);
+            console.log('Chat partner set as job owner:', job.postedBy);
 
             // Check if freelancer is eligible to message
+            console.log('Checking messaging eligibility...');
             try {
               const eligibilityResponse = await api.post('/messages/check-eligibility', {
                 username: currentUser.username,
                 jobId: roomInfo.jobId
               });
 
+              console.log('Eligibility response:', eligibilityResponse.data);
+
               if (!eligibilityResponse.data.eligible) {
+                console.log('User not eligible for messaging');
                 alert('You must apply for this job first before messaging the job owner.');
                 navigate(`/job/${roomInfo.jobId}`);
                 return;
               }
+              
+              console.log('User is eligible for messaging');
             } catch (error) {
+              console.error('Error checking messaging eligibility:', error);
               if (error.response && error.response.status === 403) {
                 alert('You must apply for this job first before messaging the job owner.');
                 navigate(`/job/${roomInfo.jobId}`);
                 return;
               }
-              console.error('Error checking messaging eligibility:', error);
             }
           }
+        } else {
+          console.error('Job not found for ID:', roomInfo.jobId);
+          alert('Job not found. Please try again.');
+          navigate('/world');
+          return;
         }
 
         // Initialize socket connection
