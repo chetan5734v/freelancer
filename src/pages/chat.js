@@ -120,7 +120,10 @@ function CHAT() {
         }
 
         // Initialize socket connection
-        socketRef.current = io('http://localhost:8002', {
+        const socketUrl = process.env.REACT_APP_API_URL || 'http://localhost:8002';
+        console.log('Connecting to socket server:', socketUrl);
+        
+        socketRef.current = io(socketUrl, {
           transports: ['websocket', 'polling']
         });
 
