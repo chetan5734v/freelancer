@@ -171,10 +171,9 @@ function CHAT() {
       setMessageData(prev => {
         // Check if message already exists to prevent duplicates
         const messageExists = prev.some(msg =>
-          msg.id === newMessage.id ||
-          (msg.sender === newMessage.sender &&
-            msg.text === newMessage.text &&
-            Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000)
+          msg.sender === newMessage.sender &&
+          msg.text === newMessage.text &&
+          Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 5000 // 5 second window
         );
 
         if (messageExists) {
@@ -244,13 +243,13 @@ function CHAT() {
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messageData]); const sendMessage = async () => {
+  }, [messageData]);  const sendMessage = async () => {
     if (!user || inputValue.trim() === '' || !isConnected) {
       return;
     }
 
     const newMessage = {
-      id: Date.now() + Math.random(), // Unique identifier
+      // Remove custom id - let MongoDB generate _id automatically
       sender: user.username,
       text: inputValue.trim(),
       timestamp: new Date().toISOString(),
